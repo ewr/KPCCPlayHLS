@@ -5,8 +5,14 @@ class AppDelegate < PM::Delegate
 
   def on_load(app, options)
     set_appearance_defaults
+
     @_home = HomeScreen.new(nav_bar: true)
-    open @_home
+    @_access = AccessLogScreen.new(nav_bar: true)
+    @_error = ErrorLogScreen.new(nav_bar: true)
+
+    open_tab_bar @_home, @_access, @_error
+    #@_home = HomeScreen.new(nav_bar: true)
+    #open @_home
   end
 
   def set_appearance_defaults

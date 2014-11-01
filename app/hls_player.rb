@@ -128,7 +128,7 @@ class HLSPlayer
           self.last_error_log = @_player.currentItem.errorLog.extendedLogData.to_s
         end
 
-        self._setStatus(STOPPED)
+        #self._setStatus(STOPPED)
       end
     end
   end
@@ -160,7 +160,11 @@ class HLSPlayer
       @_obs = nil
     end
 
-    player.removeObserver self, forKeyPath:"status"
+    player.removeObserver self, forKeyPath: :status
+
+    if player.currentItem
+      player.currentItem.removeObserver self, forKeyPath: :status
+    end
 
     if player.currentItem && player.currentItem.errorLog
       self.last_error_log = player.currentItem.errorLog.extendedLogData.to_s
@@ -168,6 +172,42 @@ class HLSPlayer
 
     self._setStatus(STOPPED)
     true
+  end
+
+  #----------
+
+  def seekToMinutesAfter(offset_min,direction)
+    return false if !@curDate
+
+    player = self.getPlayer()
+
+    target = @curDate
+
+    if direction == -1
+      # go to top or bottom of the hour, whichever is closer
+      sub_min = @curDate.min > 30 ? @curDate.min - 30 : @curDate.min
+      target = target - sub_min*60 - @curDate.sec + offset_min*60
+
+      # if that wasn't a big move, do it again
+      if @curDate - target < 15
+        # go another 30 minutes
+        target = target - 30*60
+      end
+    else
+      # go forward...
+      add_min = @curDate.min < 30 ? 60 - (@curDate.min + 30) : 60 - @curDate.min
+      target = target + add_min*60 - @curDate.sec + offset_min*60
+
+      if target - @curDate < 15
+        target = target + 30*60
+      end
+    end
+
+    target = target + 1
+
+    PM.logger.debug "Seeking to #{ target }"
+    player.currentItem.seekToDate target
+
   end
 
   #----------
