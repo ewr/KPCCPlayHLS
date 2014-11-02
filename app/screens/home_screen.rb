@@ -1,8 +1,22 @@
 class HomeScreen < PM::Screen
   title "Player"
 
+  def canBecomeFirstResponder
+    true
+  end
+
+
+
   def on_load
     @_player ||= HLSPlayer.sharedPlayer()
+
+    @_playingInfo = {
+      MPMediaItemPropertyTitle =>                     "HLS Debugger",
+      MPMediaItemPropertyArtist =>                    "KPCC",
+      MPNowPlayingInfoPropertyPlaybackRate =>         0.0,
+      MPMediaItemPropertyPlaybackDuration =>          0.0,
+      MPNowPlayingInfoPropertyElapsedPlaybackTime =>  0.0,
+    }
 
     @_initialTime = nil
 
@@ -82,18 +96,41 @@ class HomeScreen < PM::Screen
       if @_initialTime && loaded = @_player.getPlayer().currentItem.loadedTimeRanges[0]
         loaded = loaded.CMTimeRangeValue
 
-        min = @_initialTime + ( loaded.start.value / loaded.start.timescale )
-        max = min + ( loaded.duration.value / loaded.duration.timescale )
+        if loaded.start.timescale != 0 && loaded.duration.timescale != 0
+          min = @_initialTime + ( loaded.start.value / loaded.start.timescale )
+          max = min + ( loaded.duration.value / loaded.duration.timescale )
 
-        @_loaded[:start].text = min.to_s
-        @_loaded[:end].text   = max.to_s
+          @_loaded[:start].text = min.to_s
+          @_loaded[:end].text   = max.to_s
+        else
+
+        end
       end
+
+      # -- Update Now Playing Info -- #
+
+      # FIXME: Not sure how to handle timing info given that we're a live stream
     end
 
     @_player.onStatusChange -> do
       self._setToolbarItems()
 
-      if @_player.status == HLSPlayer::STOPPED
+      case @_player.status
+      when HLSPlayer::PLAYING
+        self.becomeFirstResponder
+
+        # -- set up for remote control -- #
+        UIApplication.sharedApplication.beginReceivingRemoteControlEvents
+
+        @_playingInfo[MPNowPlayingInfoPropertyPlaybackRate] = 1.0
+        MPNowPlayingInfoCenter.defaultCenter.nowPlayingInfo = @_playingInfo
+
+      when HLSPlayer::PAUSED
+        PM.logger.debug "Setting nowPlaying to paused"
+        @_playingInfo[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
+        MPNowPlayingInfoCenter.defaultCenter.nowPlayingInfo = @_playingInfo
+
+      when HLSPlayer::STOPPED
         @_time.text = "--:--"
         @_slider.value = 100
 
@@ -110,6 +147,10 @@ class HomeScreen < PM::Screen
         #else
         #  @_errorLog.text = "No errors."
         #end
+
+        # -- remove our info from Info Center -- #
+
+        MPNowPlayingInfoCenter.defaultCenter.nowPlayingInfo = nil
       end
     end
   end
@@ -171,6 +212,19 @@ class HomeScreen < PM::Screen
   def will_appear
     @view_is_set_up ||= begin
 
+    end
+  end
+
+  def remoteControlReceivedWithEvent(event)
+    case event.subtype
+    when UIEventSubtypeRemoteControlPlay
+      @_player.play()
+    when UIEventSubtypeRemoteControlPause
+      @_player.pause()
+    when UIEventSubtypeRemoteControlNextTrack
+      @_player.seekToMinutesAfter(0,1)
+    when UIEventSubtypeRemoteControlPreviousTrack
+      @_player.seekToMinutesAfter(0,-1)
     end
   end
 

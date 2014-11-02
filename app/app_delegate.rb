@@ -15,6 +15,10 @@ class AppDelegate < PM::Delegate
     #open @_home
   end
 
+  def on_unload
+    UIApplication.sharedApplication.endReceivingRemoteControlEvents
+  end
+
   def set_appearance_defaults
     UINavigationBar.appearance.barTintColor = hex_color("b24401")
   end

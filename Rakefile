@@ -10,7 +10,11 @@ Motion::Project::App.setup do |app|
   app.name = 'KPCCDebug'
   app.identifier = "is.ewr.KPCCDebug"
 
+  app.entitlements['keychain-access-groups'] = [
+      app.seed_id + '.' + app.identifier
+  ]
+
   app.interface_orientations = [:portrait]
-  app.frameworks += ["CoreMedia","AVFoundation"]
+  app.frameworks += ["CoreMedia","AVFoundation","MediaPlayer"]
   app.background_modes = [:audio]
 end
